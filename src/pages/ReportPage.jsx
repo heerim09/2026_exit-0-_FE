@@ -1,61 +1,179 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  FileText, Download, Share2, Calendar, TrendingUp, TrendingDown,
-  BarChart3, Scan,
+  FileText, Download, Scan, TrendingUp, TrendingDown,
+  Droplets, Wind, Zap, BarChart3, Calendar, Minus,
 } from 'lucide-react';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import Header from '../components/common/Header';
 import Sidebar from '../components/common/Sidebar';
 import BottomNav from '../components/common/BottomNav';
 import Button from '../components/common/Button';
 import useMockAuth from '../hooks/useMockAuth';
+import { weeklyData, measurementHistory } from '../utils/mockData';
 
+// ─── 기간 필터 ──────────────────────────────────────────
+const periodFilters = [
+  { id: 'week', label: '주간' },
+  { id: 'month', label: '월간' },
+  { id: '3month', label: '3개월' },
+  { id: 'all', label: '전체' },
+];
+
+// ─── 지표 필터 ──────────────────────────────────────────
+const metricFilters = [
+  { id: 'moisture', label: '수분도', icon: Droplets },
+  { id: 'oil', label: '유분도', icon: Wind },
+  { id: 'pore', label: '모공', icon: BarChart3 },
+  { id: 'elasticity', label: '탄력', icon: Zap },
+];
+
+// ─── 요약 카드 컴포넌트 ──────────────────────────────────
+const SummaryCard = ({ title, value, isPositive, subtitle }) => {
+  const isNeutral = value === '0%' || value === '-';
+  const colorClass = isNeutral
+    ? 'text-text-secondary'
+    : isPositive
+    ? 'text-primary-600'
+    : 'text-red-500';
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col">
+      <p className="text-[11px] font-medium text-text-secondary mb-2">{title}</p>
+      <p className={`text-3xl font-bold ${colorClass} mb-1`}>{value}</p>
+      <div className={`flex items-center gap-1 text-xs ${colorClass}`}>
+        {isNeutral ? (
+          <Minus size={12} />
+        ) : isPositive ? (
+          <TrendingUp size={12} />
+        ) : (
+          <TrendingDown size={12} />
+        )}
+        <span>{subtitle}</span>
+      </div>
+    </div>
+  );
+};
+
+// ─── 진행 바 컴포넌트 ────────────────────────────────────
+const ProgressBar = ({ value, max = 100 }) => {
+  const percent = (value / max) * 100;
+  return (
+    <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+      <div
+        className="h-full rounded-full transition-all duration-700 ease-out"
+        style={{
+          width: `${percent}%`,
+          backgroundColor: percent >= 70 ? '#4CAF50' : percent >= 50 ? '#EAB308' : '#F97316',
+        }}
+      />
+    </div>
+  );
+};
+
+// ─── 사이드 필터 (데스크톱) ──────────────────────────────
+const ReportSidebar = ({ period, onPeriod, metric, onMetric }) => {
+  return (
+    <div className="hidden desktop:block w-40 flex-shrink-0 mr-6">
+      {/* 기간 필터 */}
+      <div className="mb-6">
+        <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider mb-3 px-2">
+          기간
+        </p>
+        <nav className="flex flex-col gap-0.5">
+          {periodFilters.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => onPeriod(p.id)}
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-left ${
+                period === p.id
+                  ? 'bg-primary-50 text-primary-600 font-semibold'
+                  : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
+              }`}
+            >
+              <span
+                className={`w-3 h-3 rounded flex-shrink-0 ${
+                  period === p.id ? 'bg-primary-400' : 'bg-gray-200'
+                }`}
+              />
+              {p.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* 지표 필터 */}
+      <div>
+        <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider mb-3 px-2">
+          지표
+        </p>
+        <nav className="flex flex-col gap-0.5">
+          {metricFilters.map((m) => {
+            const Icon = m.icon;
+            return (
+              <button
+                key={m.id}
+                onClick={() => onMetric(m.id)}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-left ${
+                  metric === m.id
+                    ? 'bg-primary-50 text-primary-600 font-semibold'
+                    : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
+                }`}
+              >
+                <span
+                  className={`w-3 h-3 rounded flex-shrink-0 ${
+                    metric === m.id ? 'bg-primary-400' : 'bg-gray-200'
+                  }`}
+                />
+                {m.label}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+    </div>
+  );
+};
+
+// ─── 커스텀 바 차트 Tooltip ──────────────────────────────
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 text-sm">
+        <p className="text-text-secondary text-xs mb-1">{label}</p>
+        <p className="font-bold text-primary-600">{payload[0].value}점</p>
+      </div>
+    );
+  }
+  return null;
+};
+
+// ─── ReportPage 메인 ────────────────────────────────────
 const ReportPage = () => {
   const { user } = useMockAuth(true);
-  const [period, setPeriod] = useState('week');
+  const [period, setPeriod] = useState('month');
+  const [metric, setMetric] = useState('moisture');
 
   const hasScanData = !!localStorage.getItem('skinlab_last_scan');
+  const scanCount = measurementHistory.length;
+  const hasEnoughScans = scanCount >= 2;
 
-  // Mock trend data
-  const trendData = [
-    { date: '03/26', moisture: 62, oil: 48, score: 66 },
-    { date: '03/28', moisture: 65, oil: 46, score: 68 },
-    { date: '03/31', moisture: 68, oil: 44, score: 70 },
-    { date: '04/01', moisture: 68, oil: 45, score: 71 },
-    { date: '04/03', moisture: 70, oil: 43, score: 72 },
-    { date: '04/05', moisture: 72, oil: 45, score: 74 },
-  ];
+  // TODO: 백엔드 연동 시 교체
+  // const response = await axios.get('/api/report', { params: { period, metric } });
 
-  const reports = [
-    {
-      id: 1,
-      date: '2026.04.05',
-      score: 74,
-      type: '복합성 피부',
-      change: '+3',
-      trend: 'up',
-    },
-    {
-      id: 2,
-      date: '2026.04.01',
-      score: 71,
-      type: '복합성 피부',
-      change: '+1',
-      trend: 'up',
-    },
-    {
-      id: 3,
-      date: '2026.03.26',
-      score: 66,
-      type: '건성 경향',
-      change: '-2',
-      trend: 'down',
-    },
-  ];
+  // PDF 내보내기 핸들러 (추후 jsPDF 연동)
+  const handleExportPDF = () => {
+    // TODO: jsPDF로 리포트 생성
+    // import jsPDF from 'jspdf';
+    // const doc = new jsPDF();
+    // doc.text('피부 분석 리포트', 10, 10);
+    // doc.save('skinlab-report.pdf');
+    alert('PDF 내보내기 기능은 추후 구현 예정입니다.');
+  };
 
+  // ─── 스캔 데이터 없을 때 Empty State ────────────────
   if (!hasScanData) {
     return (
       <div className="min-h-screen bg-background-gray">
@@ -91,106 +209,206 @@ const ReportPage = () => {
       <div className="flex">
         <Sidebar />
 
-        <main className="flex-1 p-4 tablet:p-6 desktop:p-8 pb-24 desktop:pb-8 max-w-5xl animate-fadeIn">
-          {/* Title */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-xl font-bold text-text-primary">분석 리포트</h1>
-              <p className="text-sm text-text-secondary">피부 변화 추이를 확인하세요</p>
+        <main className="flex-1 p-4 tablet:p-6 desktop:p-8 pb-24 desktop:pb-8 animate-fadeIn">
+          <div className="max-w-6xl mx-auto">
+            {/* ── 상단 제목 + PDF 내보내기 ──────────────── */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-xl font-bold text-text-primary">분석 리포트</h1>
+                <p className="text-sm text-text-secondary">피부 변화 추이를 확인하세요</p>
+              </div>
+              <button
+                onClick={handleExportPDF}
+                className="hidden tablet:flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-text-primary hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
+              >
+                <Download size={16} />
+                PDF 내보내기
+              </button>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" icon={Download}>내보내기</Button>
-              <Button variant="outline" size="sm" icon={Share2}>공유</Button>
-            </div>
-          </div>
 
-          {/* Trend Chart */}
-          <div className="card mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-text-primary">피부 점수 추이</h3>
-              <div className="flex gap-1">
-                {['week', 'month', '3month'].map((p) => (
+            {/* ── 모바일 기간/지표 탭 ─────────────────── */}
+            <div className="desktop:hidden mb-6">
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mb-3">
+                {periodFilters.map((p) => (
                   <button
-                    key={p}
-                    onClick={() => setPeriod(p)}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                      period === p
+                    key={p.id}
+                    onClick={() => setPeriod(p.id)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                      period === p.id
                         ? 'bg-primary-500 text-white'
-                        : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
+                        : 'bg-white border border-gray-200 text-text-secondary hover:border-primary-300'
                     }`}
                   >
-                    {p === 'week' ? '1주' : p === 'month' ? '1개월' : '3개월'}
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                {metricFilters.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setMetric(m.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      metric === m.id
+                        ? 'bg-primary-500 text-white'
+                        : 'bg-white border border-gray-200 text-text-secondary'
+                    }`}
+                  >
+                    {m.label}
                   </button>
                 ))}
               </div>
             </div>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#757575' }} />
-                  <YAxis domain={[50, 100]} tick={{ fontSize: 12, fill: '#757575' }} />
-                  <Tooltip
-                    contentStyle={{
-                      background: '#fff',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '12px',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <Line type="monotone" dataKey="score" stroke="#4CAF50" strokeWidth={2.5} dot={{ fill: '#4CAF50', r: 4 }} />
-                  <Line type="monotone" dataKey="moisture" stroke="#60A5FA" strokeWidth={1.5} strokeDasharray="5 5" dot={false} />
-                  <Line type="monotone" dataKey="oil" stroke="#FBBF24" strokeWidth={1.5} strokeDasharray="5 5" dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex justify-center gap-6 mt-4">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-0.5 bg-primary-500"></span>
-                <span className="text-xs text-text-secondary">종합 점수</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-0.5 bg-blue-400 border-dashed"></span>
-                <span className="text-xs text-text-secondary">수분도</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-0.5 bg-yellow-400"></span>
-                <span className="text-xs text-text-secondary">유분도</span>
-              </div>
-            </div>
-          </div>
 
-          {/* Reports List */}
-          <div className="card">
-            <h3 className="text-sm font-semibold text-text-primary mb-4">리포트 목록</h3>
-            <div className="space-y-3">
-              {reports.map((report) => (
-                <div
-                  key={report.id}
-                  className="flex items-center justify-between p-4 bg-background-gray rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-primary-50 rounded-full flex items-center justify-center">
-                      <Calendar size={18} className="text-primary-500" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">{report.date}</p>
-                      <p className="text-xs text-text-secondary">{report.type}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-primary-500">{report.score}점</p>
-                      <div className={`flex items-center gap-1 text-xs ${
-                        report.trend === 'up' ? 'text-green-500' : 'text-red-500'
-                      }`}>
-                        {report.trend === 'up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                        <span>{report.change}점</span>
+            {/* ── 본문: 사이드바 + 콘텐츠 ────────────── */}
+            <div className="flex">
+              <ReportSidebar
+                period={period}
+                onPeriod={setPeriod}
+                metric={metric}
+                onMetric={setMetric}
+              />
+
+              <div className="flex-1 min-w-0 space-y-6">
+                {/* ── 요약 카드 3개 ────────────────────── */}
+                <div className="grid grid-cols-1 tablet:grid-cols-3 gap-4">
+                  <SummaryCard
+                    title="수분 변화"
+                    value="+8%"
+                    isPositive={true}
+                    subtitle="지난달 대비"
+                  />
+                  <SummaryCard
+                    title="유분 변화"
+                    value="-5%"
+                    isPositive={false}
+                    subtitle="개선됨"
+                  />
+                  <SummaryCard
+                    title="모공 변화"
+                    value="+3%"
+                    isPositive={true}
+                    subtitle="경미 향상"
+                  />
+                </div>
+
+                {/* ── 차트 + 히스토리 (가로 배치) ──────── */}
+                <div className="grid grid-cols-1 desktop:grid-cols-2 gap-6">
+                  {/* 월간 수분도 변화 차트 */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                    <h3 className="text-sm font-semibold text-text-primary mb-4">
+                      월간 수분도 변화
+                    </h3>
+                    {hasEnoughScans ? (
+                      <div className="h-52">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={weeklyData} barCategoryGap="30%">
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                            <XAxis
+                              dataKey="week"
+                              tick={{ fontSize: 11, fill: '#757575' }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              domain={[0, 100]}
+                              tick={{ fontSize: 11, fill: '#757575' }}
+                              axisLine={false}
+                              tickLine={false}
+                              width={30}
+                            />
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
+                            <Bar dataKey="score" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                              {weeklyData.map((entry, index) => (
+                                <Cell
+                                  key={`cell-${index}`}
+                                  fill={
+                                    index === weeklyData.length - 1
+                                      ? '#4CAF50'
+                                      : '#C8E6C9'
+                                  }
+                                />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
                       </div>
+                    ) : (
+                      <div className="h-52 flex flex-col items-center justify-center text-center">
+                        <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                          <BarChart3 size={24} className="text-gray-300" />
+                        </div>
+                        <p className="text-sm text-text-secondary">
+                          최소 2회 스캔 후 비교 가능합니다
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 측정 히스토리 테이블 */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-5">
+                    <h3 className="text-sm font-semibold text-text-primary mb-4">
+                      측정 히스토리
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-100">
+                            <th className="text-left py-2.5 pr-3 text-xs font-semibold text-text-secondary">
+                              날짜
+                            </th>
+                            <th className="text-left py-2.5 pr-3 text-xs font-semibold text-text-secondary">
+                              피부 타입
+                            </th>
+                            <th className="text-left py-2.5 pr-3 text-xs font-semibold text-text-secondary">
+                              점수
+                            </th>
+                            <th className="text-left py-2.5 text-xs font-semibold text-text-secondary min-w-[120px]">
+                              변화
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {measurementHistory.map((item) => (
+                            <tr
+                              key={item.id}
+                              className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors"
+                            >
+                              <td className="py-3.5 pr-3 text-text-primary font-medium">
+                                {item.date}
+                              </td>
+                              <td className="py-3.5 pr-3 text-text-secondary">
+                                {item.skinType}
+                              </td>
+                              <td className="py-3.5 pr-3 font-bold text-text-primary">
+                                {item.score}
+                              </td>
+                              <td className="py-3.5">
+                                <div className="flex items-center gap-2">
+                                  <ProgressBar value={item.score} />
+                                  {item.change !== '-' && (
+                                    <span
+                                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                        item.trend === 'up'
+                                          ? 'bg-primary-50 text-primary-600'
+                                          : item.trend === 'down'
+                                          ? 'bg-red-50 text-red-500'
+                                          : 'bg-gray-100 text-text-secondary'
+                                      }`}
+                                    >
+                                      {item.change}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         </main>
