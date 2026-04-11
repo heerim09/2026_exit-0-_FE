@@ -10,13 +10,19 @@ import BottomNav from '../components/common/BottomNav';
 import Button from '../components/common/Button';
 import useMockAuth from '../hooks/useMockAuth';
 import useWeather from '../hooks/useWeather';
-import { mockScanHistory, mockAnalysis } from '../utils/mockData';
+import { mockAnalysis } from '../utils/mockData';
 import { SCAN_AREAS, LIGHTING_MODES, MEASUREMENT_ITEMS, UV_LEVELS } from '../utils/constants';
+import useScanStore from '../store/scanStore';
 
 const ScanPage = () => {
   const navigate = useNavigate();
   const { user } = useMockAuth(true);
   const { weather } = useWeather();
+  const { scans, addScan, initializeIfNeeded } = useScanStore();
+
+  useEffect(() => {
+    initializeIfNeeded();
+  }, [initializeIfNeeded]);
 
   const [scanStatus, setScanStatus] = useState('ready'); // ready | countdown | scanning | complete
   const [countdown, setCountdown] = useState(3);
@@ -73,12 +79,13 @@ const ScanPage = () => {
         overallScore: Math.floor(60 + Math.random() * 30),
         date: new Date().toISOString().split('T')[0].replace(/-/g, '.'),
         area: selectedArea,
+        skinType: '최근 분석 상태',
       };
-      localStorage.setItem('skinlab_last_scan', JSON.stringify(result));
+      addScan(result);
       
       setTimeout(() => navigate('/analysis'), 1500);
     }
-  }, [scanStatus, scanProgress, navigate, selectedArea]);
+  }, [scanStatus, scanProgress, navigate, selectedArea, addScan]);
 
   const checklist = [
     { icon: CheckCircle, text: '밝은 환경에서 측정하세요', type: 'ok' },
@@ -303,22 +310,26 @@ const ScanPage = () => {
               {/* Scan History */}
               <div className="card">
                 <h3 className="text-sm font-semibold text-text-primary mb-4">이전 스캔 기록</h3>
-                {mockScanHistory.length > 0 ? (
+                {scans.length > 0 ? (
                   <div className="space-y-3">
-                    {mockScanHistory.map((scan) => (
+                    {scans.slice(0, 5).map((scan) => (
                       <div
                         key={scan.id}
-                        className="flex items-center justify-between p-3 bg-background-gray rounded-xl"
+                        className="flex items-center justify-between p-3 bg-background-gray rounded-xl cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => {
+                          useScanStore.getState().setCurrentScan(scan);
+                          navigate('/analysis');
+                        }}
                       >
                         <div>
                           <p className="text-xs font-medium text-text-primary">
                             {scan.date} — {scan.area}
                           </p>
-                          <p className="text-[11px] text-text-secondary">
-                            {scan.type} · {scan.details}
+                          <p className="text-[11px] text-text-secondary mt-0.5">
+                            {scan.skinType} · 수분 {scan.moisture}%
                           </p>
                         </div>
-                        <span className="text-lg font-bold text-primary-500">{scan.score}</span>
+                        <span className="text-lg font-bold text-primary-500">{scan.overallScore}</span>
                       </div>
                     ))}
                   </div>

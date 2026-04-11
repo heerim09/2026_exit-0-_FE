@@ -13,7 +13,8 @@ import Sidebar from '../components/common/Sidebar';
 import BottomNav from '../components/common/BottomNav';
 import Button from '../components/common/Button';
 import useMockAuth from '../hooks/useMockAuth';
-import { mockAnalysis, mockCareAdvice } from '../utils/mockData';
+import useScanStore from '../store/scanStore';
+import { mockCareAdvice } from '../utils/mockData';
 
 // ─── 지표별 상세 분석 데이터 ────────────────────────────────
 const getMetricDetails = (analysis) => [
@@ -126,19 +127,15 @@ const CustomRadarTooltip = ({ active, payload }) => {
 // ─── AnalysisPage 메인 ──────────────────────────────────────
 const AnalysisPage = () => {
   const { user } = useMockAuth(true);
-  const [scanData, setScanData] = useState(null);
+  const { currentScan, initializeIfNeeded } = useScanStore();
   const [activeMenu, setActiveMenu] = useState('overview');
 
   useEffect(() => {
-    const stored = localStorage.getItem('skinlab_last_scan');
-    if (stored) {
-      const data = JSON.parse(stored);
-      setScanData(data);
-    }
-  }, []);
+    initializeIfNeeded();
+  }, [initializeIfNeeded]);
 
-  const analysis = scanData || mockAnalysis;
-  const hasScanData = !!scanData;
+  const analysis = currentScan;
+  const hasScanData = !!currentScan;
 
   // 오늘 측정 5각형 데이터
   const radarData = [
