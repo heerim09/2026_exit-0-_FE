@@ -100,7 +100,7 @@ const ScoreCircle = ({ score }) => {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xs text-text-secondary">종합 피부 점수</span>
+        <span className="text-[10px] text-text-secondary">종합 피부 점수</span>
         <span className="text-4xl font-bold" style={{ color }}>{score}</span>
         <span className="text-[10px] text-text-secondary">/100</span>
       </div>

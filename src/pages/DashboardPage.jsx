@@ -66,7 +66,7 @@ const DashboardPage = () => {
             <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
             <div className="flex flex-col tablet:flex-row tablet:items-center justify-between gap-4">
               <div>
-                <p className="text-primary-100 text-sm mb-1">🌿 담다에 오신 걸 환영해요!</p>
+                <p className="text-primary-100 text-sm mb-1">담다에 오신 걸 환영해요!</p>
                 <h1 className="text-2xl font-bold mb-2">
                   {user?.nickname || '사용자'}님, 안녕하세요
                 </h1>

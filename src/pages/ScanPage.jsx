@@ -131,7 +131,7 @@ const ScanPage = () => {
                   </div>
 
                   {/* Face outline SVG */}
-                  <svg viewBox="0 0 200 280" className="w-48 h-auto opacity-40" fill="none" stroke="#4CAF50" strokeWidth="1.5">
+                  <svg viewBox="0 0 200 280" className="h-[80%] w-auto opacity-40" fill="none" stroke="#4CAF50" strokeWidth="1.5">
                     <ellipse cx="100" cy="130" rx="70" ry="90" />
                     <ellipse cx="70" cy="115" rx="12" ry="8" />
                     <ellipse cx="130" cy="115" rx="12" ry="8" />
@@ -291,13 +291,13 @@ const ScanPage = () => {
                         <span className="text-sm text-text-primary">{item.label}</span>
                         <button
                           onClick={() => toggleMeasurement(item.id)}
-                          className={`relative w-11 h-6 rounded-full transition-colors ${
+                          className={`relative w-11 h-6 rounded-full transition-colors flex items-center ${
                             measurements[item.id] ? 'bg-primary-500' : 'bg-gray-200'
                           }`}
                         >
                           <span
-                            className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                              measurements[item.id] ? 'translate-x-5' : 'translate-x-0.5'
+                            className={`inline-block w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                              measurements[item.id] ? 'translate-x-[22px]' : 'translate-x-[2px]'
                             }`}
                           ></span>
                         </button>
