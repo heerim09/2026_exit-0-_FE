@@ -11,7 +11,7 @@ import Button from '../components/common/Button';
 import useMockAuth from '../hooks/useMockAuth';
 import useWeather from '../hooks/useWeather';
 import { mockAnalysis } from '../utils/mockData';
-import { SCAN_AREAS, LIGHTING_MODES, MEASUREMENT_ITEMS, UV_LEVELS } from '../utils/constants';
+import { SCAN_AREAS, MEASUREMENT_ITEMS, UV_LEVELS } from '../utils/constants';
 import useScanStore from '../store/scanStore';
 
 const ScanPage = () => {
@@ -28,7 +28,7 @@ const ScanPage = () => {
   const [countdown, setCountdown] = useState(3);
   const [scanProgress, setScanProgress] = useState(0);
   const [selectedArea, setSelectedArea] = useState('얼굴 전체');
-  const [lightingMode, setLightingMode] = useState('white');
+
   const [measurements, setMeasurements] = useState(
     MEASUREMENT_ITEMS.reduce((acc, item) => ({ ...acc, [item.id]: item.default }), {})
   );
@@ -198,7 +198,6 @@ const ScanPage = () => {
                       {scanStatus === 'complete' && '스캔 완료!'}
                     </span>
                     <div className="flex gap-2">
-                      <span className="text-xs px-2 py-1 bg-gray-100 rounded">조명 조절</span>
                       <span className="text-xs px-2 py-1 bg-gray-100 rounded">해상도</span>
                     </div>
                   </div>
@@ -262,25 +261,7 @@ const ScanPage = () => {
                   </div>
                 </div>
 
-                {/* Lighting Mode */}
-                <div className="mb-5">
-                  <p className="text-xs font-medium text-text-secondary mb-2">조명 모드</p>
-                  <div className="flex gap-2">
-                    {LIGHTING_MODES.map((mode) => (
-                      <button
-                        key={mode.id}
-                        onClick={() => setLightingMode(mode.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                          lightingMode === mode.id
-                            ? 'bg-primary-500 text-white'
-                            : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
-                        }`}
-                      >
-                        {mode.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+
 
                 {/* Measurement Toggles */}
                 <div>
